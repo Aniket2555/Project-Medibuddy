@@ -1,47 +1,70 @@
 # Weather-Advisory Support Bot
 
-A LangGraph chat bot that answers outdoor-activity safety questions using live
-Open-Meteo weather data, and gives advice **only** from written policy rules (SOPs).
+A LangGraph chat bot that answers outdoor-activity safety questions ("is it safe to cycle today?",
+"should I take my kid to the park?") using **live Open-Meteo weather**, and gives advice **only from
+written policies (SOPs)**. The model never decides what good advice is, never picks a policy and never
+types a number. It labels the question and words the answer. Everything else is deterministic code.
 
-> 🚧 Work in progress — being built phase by phase.
-
-## Setup
+## Quick start
 
 ```bash
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
+.venv\Scripts\activate                 # Windows   (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
-cp .env.example .env      # then put your GROQ_API_KEY in .env
-                          # defaults: GROQ_MODEL=openai/gpt-oss-120b, GROQ_REASONING_EFFORT=low
+cp .env.example .env                   # add GROQ_API_KEY (free key: https://console.groq.com/keys)
+                                       # defaults: GROQ_MODEL=openai/gpt-oss-120b, GROQ_REASONING_EFFORT=low
+
+streamlit run frontend/streamlit_app.py      # chat UI at http://localhost:8501
+python -m app.cli                            # or chat in the terminal (/why, /new, /quit)
+python -m pytest -q                          # 155 unit + graph tests, no API key needed
+python -m evals.run_evals                    # eval suite against the real LLM → evals/RESULTS.md
 ```
 
-## Run the chat frontend
+Python 3.11. The `.env` file is git-ignored; only `.env.example` (placeholders) is committed.
 
-```bash
-streamlit run frontend/streamlit_app.py      # then open http://localhost:8501
-```
+## What an answer looks like
 
-Type a question in the chat box. Under every answer, **"Why did it say that?"** shows the policies applied,
-the exact weather comparisons that triggered them, how the question was understood, the path through
-the graph and the raw weather facts. The sidebar lists the SOPs currently loaded from `sops/` (re-read
-on every message, so a new policy file appears without a restart) and has a **New session** button
-(memory is per browser session).
+> **Q:** Is it safe to go for a bike ride in Bhopal today? *(during a multi-day rain system, synthetic fixture)*
+>
+> A sustained heavy‑rain system is affecting Bhopal: about 86.4 mm of rain is forecast over the next 3 days,
+> with the wettest day at 28.8 mm and gusts up to 42.0 km/h. Treat outdoor plan as high risk. Postpone activity,
+> avoid waterlogged roads, underpasses and low‑lying areas, and do not ride through flooded streets. … **[SOP-001]**
+> Gusts are forecast to reach 42.0 km/h … This can push a bicycle or scooter sideways, especially on bridges,
+> flyovers and open roads. … **[SOP-004]** There is up to a 90% chance of rain … Expect slower traffic and possible
+> delays. … **[SOP-005]**
+>
+> *(real output from gpt-oss-120b, abridged with "…")*
+>
+> *Policy basis: SOP-001 Active heavy-rain system (critical, v2); SOP-004 Strong gusts for cyclists and
+> two-wheelers (high, v1); SOP-005 Likely rain on a journey (moderate, v1)*
+> *Weather data: Open-Meteo for Bhopal, today (forecast issued … local time).*
+> *I've taken "bike" to mean a motorbike or scooter. If you meant a bicycle, just say so and I'll check again.*
 
-## Run the bot (terminal)
+Every number came from the API response for that request and was inserted by code. The footer is built by
+code from the matcher's output. In the UI, **"Why did it say that?"** under each answer shows the exact
+comparisons (`window_gusts_max_kmh = 42.0 km/h (>= 40: yes)`), how the question was understood, and the path
+through the graph.
 
-```bash
-python -m app.cli                                              # interactive chat; /why /new /quit
-python -m app.cli "Is it safe to go for a bike ride in Bhopal today?"   # one-shot, prints the answer + why
-```
+---
 
-`/why` shows the path taken through the graph, the extracted intent, the policies applied and the exact
-weather comparisons that triggered them.
+## Design
 
-## Architecture
+### The boundary: deterministic code vs the model
+
+The core decision. Anything that decides *facts* or *advice* is code; the model handles only language.
+
+| Step | Who does it | Why |
+|---|---|---|
+| Understand the question → activity, who's going, city, day, time of day | **LLM**, constrained to a closed label set generated from the SOP vocabulary | Paraphrases ("taking the scooty to office", "my dad is 70 … stroll") need language understanding. The output can only be labels that exist |
+| Resolve ambiguous words ("bike") | **Code**, a rule in `config/vocabulary.yaml` | Must behave the same every time, and the reply states the assumption |
+| Geocode, fetch the forecast, handle failures | **Code** | Facts, not language |
+| Turn raw JSON into named facts (window maxima, 3-day totals, rain-system flag) | **Code** (`app/facts.py`) | The only source of numbers; deterministic and tested |
+| Decide which SOPs apply, rank them | **Code** (`app/matcher.py`) | Policy decisions must be auditable and repeatable |
+| Word the reply from the selected policies | **LLM** | Natural phrasing that answers the actual question |
+| Check the wording (numbers, citations, order) | **Code** (`app/grounding.py`) | The model's output is untrusted until validated |
+| Every failure reply (no data, no policy, out of scope) | **Code**, fixed text | Failure paths can't hallucinate |
+
+### The graph
 
 ```mermaid
 graph TD
@@ -66,46 +89,23 @@ graph TD
   V -- pass --> F[finalize]
 ```
 
-Only `understand` and `compose` call the LLM. Every node on a failure path replies with fixed text
-(no LLM), so failures can't hallucinate. Memory is a LangGraph `MemorySaver` checkpointer keyed by a
-session id: within a session the bot remembers the city, activity, who's going, the time window and what
-it cited last; a new session starts empty.
+15 nodes, 7 branch points, 8 distinct endings (`app/graph.py`). Why this shape:
+- **Each external dependency gets its own node and its own failure edge** (geocoder, forecast API, the forecast
+  window), and all of them route to the *same* honest "I can't get the weather" reply, as the brief requires for
+  location failures.
+- **Matching sits between data and wording**, so the composer only ever sees policies that already apply. It can't
+  cite or invent anything else.
+- **`validate → compose` is a real loop**: a rejected draft goes back with the exact rejection reasons. After 3
+  rejections, or if the LLM is down, the reply is the policy text itself, rendered with live values (`respond_templated`).
+  The user always gets policy-grounded advice.
+- Dependencies (weather client, LLM calls, SOP folder) are **injected**, so tests and evals swap in fixtures, outages
+  or a scripted LLM without patching.
 
-### Where the non-negotiables are enforced
+### Policies (SOPs)
 
-| Requirement | Enforced in |
-|---|---|
-| Every answer traceable to an SOP, or says none applies | `app/grounding.py` `validate_draft` (every matched policy cited inline, no others); `app/responses.py` `footer` (code-built "Policy basis"); `respond_no_policy` / `respond_unknown_activity` |
-| Policy changes need no code changes | `app/sop_loader.py` re-reads `sops/*.yaml` on every request; intent labels are generated from the vocabulary + SOP files (`app/intent.py` `build_intent_model`) |
-| Never answer with a forecast we don't have | `app/weather.py` (every failure → `WeatherDataError`), `app/facts.py` (`WindowUnavailable`), graph routes all of them to `respond_data_unavailable`; `app/matcher.py` skips SOPs whose data is missing |
-| Never invent advice when no policy covers it | `app/matcher.py` (closed activity vocabulary, all-clear safety belt), templated `respond_no_policy` / `respond_unknown_activity` |
-| The model composes language, never facts | `app/compose.py` (the LLM writes `{placeholders}`, not numbers) + `app/grounding.py` (rejects any number the model typed that isn't a constant from the policy text; `render_answer` substitutes the API values) |
-
-## Useful commands (so far)
-
-```bash
-# Unit tests
-python -m pytest -q
-
-# See the live weather "facts" the bot would reason over, for any city / time window
-python -m app.inspect_weather Bhopal
-python -m app.inspect_weather "New Delhi" --day tomorrow --part afternoon
-
-# Regenerate the synthetic weather fixtures used by tests/evals
-python -m evals.fixtures.build_synthetic
-
-# Validate all SOPs and print the policy table
-python -m app.sop_loader
-```
-
-Rain-system detection thresholds and time-window hours are in `config/facts_config.yaml`.
-
-## The policies (SOPs)
-
-SOPs live in `sops/`, **one YAML file per policy**.
-*Why YAML files:* a policy team can read and edit them without knowing Python, comments explain
-intent next to the rule, each policy change is its own reviewable git diff, and adding a policy
-means adding one file.
+SOPs live in [`sops/`](sops), **one YAML file per policy**.
+*Why this form:* the policy team can read and edit YAML without Python, comments sit next to each rule,
+every change is its own reviewable git diff, and adding a policy means adding a file.
 
 | ID | Category | Severity | When it applies |
 |---|---|---|---|
@@ -122,71 +122,153 @@ means adding one file.
 | SOP-011 | exercise | low | Light rain (< 2.5 mm/h) while walking, running or hiking |
 | SOP-012 | general | info | **All-clear** fallback: nothing else applies and values are within ordinary bands |
 
-Each SOP declares which activities/audiences it covers, a condition over named weather facts
-(`all` / `any` / `not` with operators like `>=`, `between`), a severity, and guidance text whose
-numbers are `{fact}` placeholders filled from the live forecast.
+Each SOP declares the activities/audiences it covers, a condition over named weather facts (`all` / `any` / `not`,
+operators like `>=`, `between`), a severity, and guidance whose numbers are `{fact}` placeholders filled from the
+live forecast. The loader (`app/sop_loader.py`) validates everything strictly: unknown facts, operators,
+severities, categories, placeholders or keys fail loudly, with one readable line per mistake naming the file and field.
 
-### Adding a policy (no code changes, no restart)
+Three policies show the judgment calls:
+- **The rain system (SOP-001): "the reason is bigger than any single threshold."** Open-Meteo has no IMD alerts, so
+  `app/facts.py` raises a `heavy_rain_system` flag when **≥ 3 of 5 independent signals** agree over the 3-day forecast
+  (multi-day total ≥ 50 mm, wettest day ≥ 25 mm, ≥ 2 high-chance days, a heavy-rain/storm code, gusts ≥ 40 km/h), or any
+  day ≥ 64.5 mm (IMD's "heavy rainfall" threshold). Thresholds live in `config/facts_config.yaml`. A synthetic case
+  with only ~1.2 mm/h, no heavy-rain code and no extreme day still triggers it, because the *pattern* is a system. Testing
+  showed that one isolated thunderstorm fired three correlated signals at once, so the "chance" signal counts *days*, measuring persistence.
+  SOP-001 is `override: true`: it applies to every activity and always leads the answer.
+- **The fuzzy picnic policy (SOP-009)** has no single threshold. It lists five soft factors (dry, rain chance < 40%,
+  feels-like 18–32 °C, gusts < 30 km/h, UV < 8); code counts passes and picks a grade, and the policy team wrote each
+  grade's guidance. Deterministic and auditable, without reducing to `if x > y`.
+- **The all-clear (SOP-012)** makes "go ahead" traceable too, with a safety belt: it's suppressed if any other SOP applies,
+  *and* it only fires while every value is inside ordinary bands. Strong wind while *running* matches no hazard SOP (the wind
+  policy is for two-wheelers), and the all-clear refuses, so the bot says it has no guidance instead of falsely reassuring.
 
-1. Copy `sops/_TEMPLATE.yaml` to `sops/SOP-013-your-policy.yaml` and fill it in.
-   Available facts: `python -m app.inspect_weather <city>`. Vocabulary: `config/vocabulary.yaml`.
-2. Run `python -m app.sop_loader`: it validates every file and reports mistakes by file and field.
-3. Ask the bot a matching question. SOPs are re-read on every request.
+**"Any activity" means any activity we know about.** `config/vocabulary.yaml` is a closed list. Anything else (scuba
+diving, paragliding) is `other` and gets "we don't have a policy for that", so a weather policy is never stretched to
+something it wasn't written for.
 
-### How matching works, and what happens when several SOPs apply
+### Adding a policy: no code changes, no restart
 
-Matching is **deterministic code** (`app/matcher.py`), not the model:
+1. Copy `sops/_TEMPLATE.yaml` to `sops/SOP-013-your-policy.yaml` and fill it in
+   (available facts: `python -m app.inspect_weather <city>`; vocabulary: `config/vocabulary.yaml`).
+2. `python -m app.sop_loader` validates every file and prints the policy table.
+3. Ask the bot. SOPs are re-read on every request; the Streamlit sidebar shows the new policy immediately; the intent
+   labeller's allowed labels are regenerated from the vocabulary + SOP files, so even a brand-new activity
+   (e.g. `kite_flying`) works with that one file.
 
-1. **Applicability.** The SOP must cover the user's activity (`[any]` = any activity in our
-   vocabulary, never an unknown one) and, if it names audiences, one of them must be present.
-2. **Conditions.** Evaluated against the live facts. If a value the SOP needs is missing, the SOP
-   is skipped: we never act on data we don't have. Rubric SOPs count passed factors to pick a grade.
-3. **Fallback.** The all-clear (SOP-012) is used only when nothing else applies, and only while every
-   value is in its ordinary bands. Otherwise the answer is "no guidance".
-4. **Conflict policy.** All matching SOPs are ranked by **override first** (the rain system always leads),
-   then **severity** (critical → info), then **specificity** (an SOP written for this activity or
-   audience beats a generic one), then ID for a stable order. The **top 3** get full guidance, and any
-   further matches are named and cited as "also applies".
-   *Why:* one winner would drop real hazards (high UV *and* strong wind on the same ride), while
-   listing everything gets long. Leading with the most severe keeps the answer honest and readable,
-   and every applicable policy is still cited.
+**Honest boundary:** a policy over *existing* facts needs no code. A policy needing a *new kind of data* (e.g. air
+quality, which isn't fetched today) needs a new field in `app/weather.py` and a new fact in `app/facts.py`. The
+control flow (`app/graph.py`) never changes.
 
-Every match records the exact comparisons that made it apply (e.g. `window_gusts_max_kmh = 58.0 km/h (>= 40)`),
-so "why did it say that?" always has an answer. To see this for any scenario:
+### Matching and conflicts
+
+`app/matcher.py`, deterministic:
+1. **Applicability:** the SOP covers the user's activity and, if it names audiences, one of them is present.
+2. **Conditions** are evaluated against the facts for the *time window the user asked about* (so midday UV doesn't
+   affect an evening run). If a value the SOP needs is missing, the SOP is **skipped**: we never act on data we don't have.
+3. **Fallback:** the all-clear only when nothing else applies.
+4. **Conflict policy:** rank by **override** (the rain system leads) → **severity** (critical → info) → **specificity**
+   (a policy written for this activity/audience beats a generic one) → ID. The **top 3** get full guidance; the rest are
+   cited as "also applies".
+   *Why:* one winner would drop real hazards (high UV *and* strong wind on the same ride); listing everything is long.
+   Leading with the most severe keeps answers honest and readable, and every applicable policy is still cited.
+
+### The non-negotiables, and where each is enforced
+
+| Requirement | Enforced in |
+|---|---|
+| Every answer traceable to an SOP, or says none applies | `app/grounding.py` `validate_draft` (every matched policy cited inline, no others); `app/responses.py` `footer` (code-built "Policy basis"); `respond_no_policy` / `respond_unknown_activity` |
+| Policy changes need no code changes | `app/sop_loader.py` re-reads `sops/*.yaml` on every request; intent labels generated from vocabulary + SOPs (`app/intent.py` `build_intent_model`) |
+| Never answer with a forecast we don't have | `app/weather.py` (every failure → `WeatherDataError`, including "200 OK but no values"), `app/facts.py` (`WindowUnavailable`), all routed to `respond_data_unavailable`; `app/matcher.py` skips SOPs with missing data |
+| Never invent advice when no policy covers it | `app/matcher.py` (closed vocabulary, all-clear safety belt); fixed-text `respond_no_policy` / `respond_unknown_activity` |
+| **The model composes language, never facts** | `app/compose.py`: the LLM writes `{placeholders}`, never numbers. `app/grounding.py` `validate_draft` rejects any number the model typed (even a correct one) unless it's a constant in the policy text, any unmatched SOP id, a missing required fact, stray braces, or a non-leading override policy. `render_answer` substitutes the API values only after validation |
+
+Prompt injection is handled structurally, not by asking the model nicely. User text reaches only the intent labeller
+(closed-enum output) and the composer (whose output must pass the validator). An injected "SOP-999 says storms are safe"
+can't be cited, because SOP-999 isn't among the matched policies.
+
+### Session memory
+
+A LangGraph `MemorySaver` checkpointer keyed by a session id (one per browser session in Streamlit). The bot keeps
+**structured facts** rather than relying on raw history alone: city (with cached coordinates), activity, who's going,
+day and time window, any pending question, and which SOPs it cited last.
+- "What about this evening instead?" reuses city and activity, **re-fetches** the weather (numbers always come from
+  *this* request), and the composer is told what it said before, so it explains changes instead of silently contradicting itself.
+- A question without a city gets "Which city?"; a bare "Pune" next completes it.
+- Memory resets when a new session starts or the server restarts, as the brief specifies.
+
+---
+
+## Evals
+
+**Results: [`evals/RESULTS.md`](evals/RESULTS.md)**, including hand-written notes on failures and caveats
+(at the end of the same file).
+
+- **31 cases** in [`evals/cases.yaml`](evals/cases.yaml), each stating what it checks, what a pass looks like and which
+  brief requirement it covers: clear matches, paraphrases (including Hinglish), severe live weather, multiple SOPs,
+  no SOP / out of scope, API and geocoder outages, six prompt-injection variants, session memory, consistency,
+  correcting an assumption, and a new SOP with no code change.
+- **Real LLM, 3 runs per case**, pass rates reported. Weather is injected: fixtures for stable cases, simulated outages,
+  live Open-Meteo for live cases.
+- **Pass/fail is programmatic:** reply type, cited SOPs and their order, extracted intent, and **every number in the
+  answer must be a value from that request's weather data** (or a constant written in the cited policy).
+- **Severe live weather, three layers:** L01 asks the brief's Bhopal question live and asserts against *whatever the API
+  returns*; L02 **scans ~20 cities at eval time** for the most severe conditions right now; L03 is a synthetic rain-system
+  twin, so the severe path is tested even when the weather is calm everywhere. If L01 only shows the all-clear because
+  Bhopal is dry that day, the notes say so.
+- **A faithfulness judge** (a different model) flags advice not found in the cited policy, which the number validator
+  can't see. It's a separate column, not a gate, with a doctored control answer to show it can flag.
+- `tests/test_eval_checks.py` proves the checks themselves can fail.
+
+The suite found real problems, all fixed and documented in the notes: an ambiguous label (a bicycle *is* a
+two-wheeler), doubled braces leaking into an answer, and provider rate limits being miscounted as bot failures.
+
+## Limitations and what I'd do next
+
+- **The rain-system flag is a proxy** derived from Open-Meteo signals, not an official alert feed. Next: ingest IMD /
+  national-service alerts as an extra signal.
+- **New kinds of data need code** (see "honest boundary" above). Policies over existing facts don't.
+- **The LLM judge is a model** and can be wrong; it's reported, not trusted as a gate.
+- **Geocoding takes the first match.** The resolved place ("Bhopal, Madhya Pradesh, India") is shown in every answer
+  so a wrong match is visible, but it isn't questioned.
+- **Free-tier limits:** Groq's free tier allows ~200k tokens/day for gpt-oss-120b; a full 3-run eval uses most of that.
+  The runner separates provider errors from bot failures and supports `--resume`.
+- **Policy gaps exist by design:** e.g. there's no heat policy for commuting, so a scooter ride at feels-like 40 °C gets an
+  honest "no policy covers this". Policy coverage is the policy team's call, and adding one is a single file.
+
+## Repository layout
+
+```
+app/
+  weather.py         Open-Meteo client; every failure → WeatherDataError; test doubles
+  facts.py           raw JSON → catalogued facts (time windows, 3-day outlook, rain-system flag)
+  sop_schema.py      Pydantic schema for SOP files (condition DSL, rubric)
+  sop_loader.py      loads + validates sops/ on every request
+  matcher.py         deterministic matching, ranking, explanations
+  intent.py          LLM job 1: closed-label intent extraction + deterministic post-processing
+  compose.py         LLM job 2: composer prompt (templates + placeholders)
+  grounding.py       validator + renderer (the "model doesn't decide facts" enforcement)
+  responses.py       fixed-text replies + code-built citation footer
+  graph.py           the LangGraph StateGraph, memory, run_turn
+  config.py          env + Groq factory
+  cli.py             terminal chat
+  inspect_weather.py CLI: show facts for any city/window, record fixtures
+config/
+  facts_config.yaml  time windows + rain-system signals/thresholds
+  vocabulary.yaml    severities, categories, activities, audiences, ambiguous-word rules
+sops/                one YAML per policy + _TEMPLATE.yaml
+frontend/            Streamlit chat app
+evals/               cases.yaml, run_evals.py, RESULTS.md, results/, fixtures/ (recorded + synthetic weather)
+tests/               unit + graph tests (no API key needed)
+```
+
+## Useful commands
 
 ```bash
-python -m app.matcher --city Bhopal --activity cycling
+python -m app.sop_loader                                   # validate SOPs, print the policy table
+python -m app.inspect_weather Bhopal --day tomorrow --part evening   # the facts the bot reasons over
+python -m app.matcher --city Bhopal --activity cycling     # which SOPs apply and why (no LLM)
 python -m app.matcher --fixture synthetic_rain_system_subtle --activity picnic --part afternoon
-python -m app.matcher --fixture synthetic_high_uv --activity park_visit --audience child --part afternoon
+python -m evals.run_evals --only L01,A02 --repeats 1       # a few eval cases
+python -m evals.run_evals --resume                         # continue a run stopped by provider quota
+python -m evals.fixtures.build_synthetic                   # regenerate synthetic weather fixtures
 ```
-
-## Eval suite
-
-```bash
-python -m evals.run_evals                          # all cases, 3 runs each, with the faithfulness judge (~15 min)
-python -m evals.run_evals --only L01,A02 --repeats 1
-python -m pytest -q                                # unit + graph tests, no API key needed
-```
-
-Results: **[`evals/RESULTS.md`](evals/RESULTS.md)** (summary, per-case detail, sample answers, and notes on
-failures). Raw runs are in `evals/results/latest.json`.
-
-- **Cases** are declared in [`evals/cases.yaml`](evals/cases.yaml). Each states what it checks, what a pass
-  looks like, and which brief requirement it covers: clear matches, paraphrases (including Hinglish),
-  severe live weather, multiple SOPs, no SOP / out of scope, API and geocoder outages, prompt injection
-  (override, invented SOP, follow-up injection, number smuggling, format pressure, "estimate it yourself"),
-  session memory, consistency, and adding a new SOP without code.
-- **Every case runs against the real LLM** (Groq). Weather is injected: recorded or synthetic fixtures for
-  stable cases, a simulated outage for failure cases, live Open-Meteo for live cases.
-- **Pass/fail is programmatic:** reply type, which SOPs are cited and in what order, the extracted intent, and
-  **every number in the answer must be a value from that request's weather data** (or a constant written in
-  the cited policy). Live cases assert against whatever the API returns on the day, never fixed numbers.
-- **Live severe weather:** L01 asks the brief's Bhopal question against live data. L02 **scans ~20 cities at
-  eval time** and uses whichever has the most severe conditions right now. L03 is a synthetic rain-system twin,
-  so the severe path is tested even on a calm day everywhere.
-- **3 runs per case**, reported as pass rates, because LLM output varies.
-- **A faithfulness judge** (a different model, `gpt-oss-20b`) checks each answer for advice that isn't in the
-  cited policy text, which the number validator can't catch. It's reported separately and isn't a gate. A
-  doctored control answer checks that the judge actually flags added advice.
-- `tests/test_eval_checks.py` feeds deliberately broken answers to the checker, so the checks themselves
-  are shown to be able to fail.

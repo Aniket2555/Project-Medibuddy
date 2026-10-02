@@ -43,7 +43,7 @@ from app.sop_loader import OTHER, SOPS_DIR, SopLibrary, SopValidationError, load
 from app.weather import Location, OpenMeteoClient, WeatherClient, WeatherDataError
 
 MAX_COMPOSE_ATTEMPTS = 3  # first draft + 2 retries, then the templated answer
-INTENT_ATTEMPTS = 2       # first call + 1 retry, then the honest error reply
+INTENT_ATTEMPTS = 3       # 2 retries: off-schema tool calls (null fields, wrong tool name) seen in evals
 
 
 @dataclass
@@ -60,7 +60,11 @@ def groq_deps(weather: WeatherClient | None = None, sops_dir: Path = SOPS_DIR) -
     llm = get_llm()
 
     def structured(system: str, user: str, schema: type[BaseModel]):
-        return llm.with_structured_output(schema).invoke([SystemMessage(system), HumanMessage(user)])
+        # Strict JSON-schema mode: output is constrained to the schema while it's generated.
+        # (Function calling, used before, failed in evals when the model misnamed the tool,
+        # e.g. "ParseQuery" for "ParsedQuery", or sent null for a list.)
+        return llm.with_structured_output(schema, method="json_schema", strict=True).invoke(
+            [SystemMessage(system), HumanMessage(user)])
 
     def complete(system: str, user: str) -> str:
         return llm.invoke([SystemMessage(system), HumanMessage(user)]).content

@@ -237,7 +237,10 @@ def run_case(case: dict, base: Deps, judge_llm, scan: dict | None) -> dict:
         for i, turn in enumerate(case["turns"], 1):
             text = turn["say"].replace("{city}", scan["city"]) if scan else turn["say"]
             state = run_turn(graph, sid, text)
-            failures += [f"turn {i}: {x}" for x in check(turn.get("expect", {}), state)]
+            turn_failures = check(turn.get("expect", {}), state)
+            if turn_failures and state.get("error"):
+                turn_failures.append(f"error: {state['error'][:200]}")  # keep the reason for every turn
+            failures += [f"turn {i}: {x}" for x in turn_failures]
     except Exception as exc:
         failures.append(f"exception: {exc!r}"[:300])
     finally:

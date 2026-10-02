@@ -71,3 +71,21 @@ def test_doubled_braces_rejected():
 def test_stray_brace_rejected():
     errs = validate_draft("UV {window_uv_max} } [SOP-002].", [UV], ["SOP-002"], FACTS)
     assert any("braces" in e for e in errs)
+
+
+def test_composer_gets_text_filled_in_and_only_number_placeholders():
+    """Found in evals: given '{window_label}' the model sometimes wrote '{this afternoon}'.
+    Text facts are now filled in by code; only numeric facts stay as placeholders."""
+    from app.compose import build_compose_prompt
+    m = {"id": "SOP-002", "title": "UV", "severity": "high", "override": False, "grade": None,
+         "guidance": "UV reaches {window_uv_max} during {window_label}.", "must_mention": ["window_uv_max"],
+         "facts": ["window_uv_max", "window_label"]}
+    _, user = build_compose_prompt("run?", [m], {**FACTS, "location_name": "Delhi"})
+    assert "during this afternoon" in user and "{window_label}" not in user
+    assert "{window_uv_max}" in user          # numbers stay placeholders
+    assert "Location: Delhi | Time window: this afternoon" in user
+
+
+def test_brace_feedback_quotes_the_fragment():
+    errs = validate_draft("UV {window_uv_max} during {this afternoon} [SOP-002].", [UV], ["SOP-002"], FACTS)
+    assert any("'{this afternoon}'" in e for e in errs)

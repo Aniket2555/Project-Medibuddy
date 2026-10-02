@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 
+from app.config import LLMNotConfigured
 from app.graph import build_graph, groq_deps, new_session_id, run_turn
 
 
@@ -32,7 +33,11 @@ def explain(state: dict) -> str:
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    graph = build_graph(groq_deps())
+    try:
+        graph = build_graph(groq_deps())
+    except LLMNotConfigured as exc:
+        print(exc, file=sys.stderr)
+        return 1
     sid, last = new_session_id(), {}
 
     if len(sys.argv) > 1:

@@ -53,8 +53,11 @@ def validate_draft(draft: str, primary: list[dict], cited_ids: list[str], facts:
 
     # 2. placeholders must be real, present facts, written with single braces
     #    (found in evals: the model sometimes writes {{window_label}}, which rendered as "{this morning}")
-    if re.search(r"[{}]", PLACEHOLDER_RE.sub("", draft)):
-        errors.append("contains stray or doubled braces; write placeholders exactly like {window_label}")
+    leftover = PLACEHOLDER_RE.sub("", draft)
+    bad = re.search(r"\{[^{}]*\}|[{}]", leftover)
+    if bad:
+        errors.append(f"contains {bad.group(0)!r}: curly braces are only for number placeholders exactly as listed in "
+                      "FACTS (e.g. {window_gusts_max_kmh}); write ordinary words without braces")
     for ph in sorted(set(PLACEHOLDER_RE.findall(draft))):
         if ph not in FACT_CATALOG:
             errors.append(f"placeholder {{{ph}}} is not a known fact")
