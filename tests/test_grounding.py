@@ -60,3 +60,14 @@ def test_empty_draft():
 def test_render_formats_values():
     assert render_answer("UV {window_uv_max}, rain {precip_3day_mm} mm", FACTS) == "UV 10.5, rain 86.4 mm"
     assert render_answer("{x}", {"x": 3}) == "3"
+
+
+def test_doubled_braces_rejected():
+    """Found in evals: '{{window_label}}' rendered as '{this morning}'."""
+    errs = validate_draft("UV {window_uv_max} during {{window_label}} [SOP-002].", [UV], ["SOP-002"], FACTS)
+    assert any("braces" in e for e in errs)
+
+
+def test_stray_brace_rejected():
+    errs = validate_draft("UV {window_uv_max} } [SOP-002].", [UV], ["SOP-002"], FACTS)
+    assert any("braces" in e for e in errs)

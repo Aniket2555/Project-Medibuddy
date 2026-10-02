@@ -5,7 +5,8 @@ cites policies inline as [SOP-xxx]. `validate_draft` rejects a draft that:
 
   1. types a number itself, unless that number is a fixed constant in the
      policy text it was given (e.g. "SPF 30", "7 seconds", "10:00");
-  2. uses a placeholder that isn't a real, non-missing fact for this request;
+  2. uses a placeholder that isn't a real, non-missing fact for this request,
+     or leaves stray/doubled braces (which would leak into the rendered text);
   3. cites a policy that wasn't matched (blocks invented or injected SOP ids);
   4. fails to cite a matched primary policy (every answer must be traceable);
   5. leaves out a fact the policy requires (`must_mention`);
@@ -50,7 +51,10 @@ def validate_draft(draft: str, primary: list[dict], cited_ids: list[str], facts:
         errors.append(f"typed numbers {stray} directly; weather values must be written as placeholders like "
                       "{window_gusts_max_kmh}, and no other numbers may be added")
 
-    # 2. placeholders must be real, present facts
+    # 2. placeholders must be real, present facts, written with single braces
+    #    (found in evals: the model sometimes writes {{window_label}}, which rendered as "{this morning}")
+    if re.search(r"[{}]", PLACEHOLDER_RE.sub("", draft)):
+        errors.append("contains stray or doubled braces; write placeholders exactly like {window_label}")
     for ph in sorted(set(PLACEHOLDER_RE.findall(draft))):
         if ph not in FACT_CATALOG:
             errors.append(f"placeholder {{{ph}}} is not a known fact")

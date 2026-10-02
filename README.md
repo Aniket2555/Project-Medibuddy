@@ -15,7 +15,8 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-cp .env.example .env      # then put your GROQ_API_KEY in .env (model: openai/gpt-oss-120b on Groq)
+cp .env.example .env      # then put your GROQ_API_KEY in .env
+                          # defaults: GROQ_MODEL=openai/gpt-oss-120b, GROQ_REASONING_EFFORT=low
 ```
 
 ## Run the chat frontend
@@ -159,4 +160,33 @@ python -m app.matcher --fixture synthetic_rain_system_subtle --activity picnic -
 python -m app.matcher --fixture synthetic_high_uv --activity park_visit --audience child --part afternoon
 ```
 
-Run instructions for the eval suite will be added when that phase lands.
+## Eval suite
+
+```bash
+python -m evals.run_evals                          # all cases, 3 runs each, with the faithfulness judge (~15 min)
+python -m evals.run_evals --only L01,A02 --repeats 1
+python -m pytest -q                                # unit + graph tests, no API key needed
+```
+
+Results: **[`evals/RESULTS.md`](evals/RESULTS.md)** (summary, per-case detail, sample answers, and notes on
+failures). Raw runs are in `evals/results/latest.json`.
+
+- **Cases** are declared in [`evals/cases.yaml`](evals/cases.yaml). Each states what it checks, what a pass
+  looks like, and which brief requirement it covers: clear matches, paraphrases (including Hinglish),
+  severe live weather, multiple SOPs, no SOP / out of scope, API and geocoder outages, prompt injection
+  (override, invented SOP, follow-up injection, number smuggling, format pressure, "estimate it yourself"),
+  session memory, consistency, and adding a new SOP without code.
+- **Every case runs against the real LLM** (Groq). Weather is injected: recorded or synthetic fixtures for
+  stable cases, a simulated outage for failure cases, live Open-Meteo for live cases.
+- **Pass/fail is programmatic:** reply type, which SOPs are cited and in what order, the extracted intent, and
+  **every number in the answer must be a value from that request's weather data** (or a constant written in
+  the cited policy). Live cases assert against whatever the API returns on the day, never fixed numbers.
+- **Live severe weather:** L01 asks the brief's Bhopal question against live data. L02 **scans ~20 cities at
+  eval time** and uses whichever has the most severe conditions right now. L03 is a synthetic rain-system twin,
+  so the severe path is tested even on a calm day everywhere.
+- **3 runs per case**, reported as pass rates, because LLM output varies.
+- **A faithfulness judge** (a different model, `gpt-oss-20b`) checks each answer for advice that isn't in the
+  cited policy text, which the number validator can't catch. It's reported separately and isn't a gate. A
+  doctored control answer checks that the judge actually flags added advice.
+- `tests/test_eval_checks.py` feeds deliberately broken answers to the checker, so the checks themselves
+  are shown to be able to fail.

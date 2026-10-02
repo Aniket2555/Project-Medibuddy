@@ -19,5 +19,8 @@ Thumbs.db
 
 # Assignment brief (company document, not part of the deliverable)
 *.pdf
+
+# .md
 PLAN.md
 PROGRESS.md
+evals/NOTES.md

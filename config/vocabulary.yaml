@@ -29,7 +29,7 @@ activities:
   walking:        Walking outdoors (stroll, evening walk, walking to the shop)
   hiking:         Hiking or trekking on trails or hills
   outdoor_sports: Playing sports outdoors (cricket, football, tennis, badminton outside)
-  two_wheeler:    Riding a motorbike or scooter (motorcycle, scooty, moped, and plain "bike" / "bike ride")
+  two_wheeler:    Riding a MOTORISED two-wheeler (motorbike, motorcycle, scooter, scooty, moped, and plain "bike" / "bike ride"). A bicycle is NOT this, it is cycling
   driving:        Driving a car or taxi
   commute:        Commuting or travelling by road / public transport (bus, train, auto, office trip)
   picnic:         Picnic or sitting outdoors for leisure (lunch in the park, barbecue)
