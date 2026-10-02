@@ -70,4 +70,31 @@ numbers are `{fact}` placeholders filled from the live forecast.
 2. Run `python -m app.sop_loader`: it validates every file and reports mistakes by file and field.
 3. Ask the bot a matching question. SOPs are re-read on every request.
 
+### How matching works, and what happens when several SOPs apply
+
+Matching is **deterministic code** (`app/matcher.py`), not the model:
+
+1. **Applicability.** The SOP must cover the user's activity (`[any]` = any activity in our
+   vocabulary, never an unknown one) and, if it names audiences, one of them must be present.
+2. **Conditions.** Evaluated against the live facts. If a value the SOP needs is missing, the SOP
+   is skipped: we never act on data we don't have. Rubric SOPs count passed factors to pick a grade.
+3. **Fallback.** The all-clear (SOP-012) is used only when nothing else applies, and only while every
+   value is in its ordinary bands. Otherwise the answer is "no guidance".
+4. **Conflict policy.** All matching SOPs are ranked by **override first** (the rain system always leads),
+   then **severity** (critical → info), then **specificity** (an SOP written for this activity or
+   audience beats a generic one), then ID for a stable order. The **top 3** get full guidance, and any
+   further matches are named and cited as "also applies".
+   *Why:* one winner would drop real hazards (high UV *and* strong wind on the same ride), while
+   listing everything gets long. Leading with the most severe keeps the answer honest and readable,
+   and every applicable policy is still cited.
+
+Every match records the exact comparisons that made it apply (e.g. `window_gusts_max_kmh = 58.0 km/h (>= 40)`),
+so "why did it say that?" always has an answer. To see this for any scenario:
+
+```bash
+python -m app.matcher --city Bhopal --activity cycling
+python -m app.matcher --fixture synthetic_rain_system_subtle --activity picnic --part afternoon
+python -m app.matcher --fixture synthetic_high_uv --activity park_visit --audience child --part afternoon
+```
+
 Run instructions for the chat backend, frontend and evals will be added as those phases land.

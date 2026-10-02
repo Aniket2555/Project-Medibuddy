@@ -7,7 +7,7 @@ title: Active heavy-rain system
 description: A multi-day heavy-rain system is over the location; every outdoor question is high risk and the answer leads with the system.
 category: general_hazard
 severity: critical
-version: 1
+version: 2  # v2: alert source no longer India-only (found testing against Jakarta data)
 owner: safety-policy-team
 applies_to:
   activities: [any]
@@ -20,8 +20,8 @@ guidance: >
   forecast over the next 3 days, with the wettest day at {precip_max_day_mm} mm and gusts up to
   {gusts_max_3day_kmh} km/h. Treat any outdoor plan as high risk regardless of the activity.
   Postpone non-essential outdoor activity. Avoid waterlogged roads, underpasses and low-lying areas,
-  and do not ride or drive through flooded streets. Check official weather alerts (IMD or your
-  local authority) before setting out.
+  and do not ride or drive through flooded streets. Check official alerts from your national
+  weather service (IMD in India) or local authority before setting out.
 must_mention: [precip_3day_mm, precip_max_day_mm]
 examples:
   - Is it safe to bike to work in Bhopal today?
