@@ -118,10 +118,10 @@ class TimeWindow:
     @property
     def label(self) -> str:
         if self.part == "now":
-            return "right now"
+            return "the next few hours"  # the "now" window = current hour + hours_ahead
         day = {"today": "today", "tomorrow": "tomorrow", "day_after": "the day after tomorrow"}.get(self.day, self.day)
         if self.part == "whole_day":
-            return f"{day} (whole day)"
+            return day
         if self.day == "today":
             return "tonight" if self.part == "night" else f"this {self.part}"
         return f"{day} {self.part}"

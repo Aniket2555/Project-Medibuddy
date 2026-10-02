@@ -25,11 +25,11 @@ categories:
 # id: description (the description + examples help the LLM map paraphrases; Phase 4)
 activities:
   running:        Running or jogging outdoors (morning run, 5k, marathon training)
-  cycling:        Riding a bicycle (bike ride, cycling to work, cycle commute)
+  cycling:        Riding a bicycle (bicycle, cycle ride, cycling to work, pedalling). Plain "bike" is NOT cycling, see assumptions
   walking:        Walking outdoors (stroll, evening walk, walking to the shop)
   hiking:         Hiking or trekking on trails or hills
   outdoor_sports: Playing sports outdoors (cricket, football, tennis, badminton outside)
-  two_wheeler:    Riding a motorbike or scooter (bike in the Indian-English sense, scooty, moped)
+  two_wheeler:    Riding a motorbike or scooter (motorcycle, scooty, moped, and plain "bike" / "bike ride")
   driving:        Driving a car or taxi
   commute:        Commuting or travelling by road / public transport (bus, train, auto, office trip)
   picnic:         Picnic or sitting outdoors for leisure (lunch in the park, barbecue)
@@ -45,3 +45,12 @@ audiences:
   pregnant:    Pregnant people
   respiratory: People with asthma or other breathing conditions
   pet:         Dogs, cats and other animals
+
+# Ambiguous words resolved by a fixed rule, applied in code after the LLM has read
+# the question (so it doesn't depend on the model). The note is appended to the answer
+# so the user can correct the assumption.
+assumptions:
+  - words: [bike, bikes, biking, bike ride]          # whole words, case-insensitive
+    unless_words: [bicycle, bicycles, cycle, cycling, pedal, pedalling, motorbike, motorcycle, scooter, scooty, moped]
+    activity: two_wheeler
+    note: I've taken "bike" to mean a motorbike or scooter. If you meant a bicycle, just say so and I'll check again.

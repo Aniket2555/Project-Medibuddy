@@ -15,8 +15,58 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
-cp .env.example .env      # then put your GROQ_API_KEY in .env
+cp .env.example .env      # then put your GROQ_API_KEY in .env (model: openai/gpt-oss-120b on Groq)
 ```
+
+## Run the bot (terminal)
+
+```bash
+python -m app.cli                                              # interactive chat; /why /new /quit
+python -m app.cli "Is it safe to go for a bike ride in Bhopal today?"   # one-shot, prints the answer + why
+```
+
+`/why` shows the path taken through the graph, the extracted intent, the policies applied and the exact
+weather comparisons that triggered them.
+
+## Architecture
+
+```mermaid
+graph TD
+  START([user message]) --> U[understand<br/><i>LLM: labels only</i>]
+  U -- out of scope --> OOS[respond_out_of_scope]
+  U -- activity we have no policy for --> UA[respond_unknown_activity]
+  U -- no city / no activity yet --> CL[ask_clarification]
+  U -- LLM or policy-file error --> ER[respond_error]
+  U -- ok --> RL[resolve_location]
+  RL -- not found / geocoder down --> DU[respond_data_unavailable]
+  RL -- ok --> FW[fetch_weather]
+  FW -- API error / missing fields --> DU
+  FW -- ok --> DF[derive_facts]
+  DF -- time outside forecast --> DU
+  DF -- ok --> M[match_sops<br/><i>deterministic</i>]
+  M -- nothing applies --> NP[respond_no_policy]
+  M -- policies apply --> C[compose<br/><i>LLM: wording only</i>]
+  C -- LLM down --> T[respond_templated]
+  C --> V[validate<br/><i>grounding checks</i>]
+  V -- rejected, retry --> C
+  V -- rejected 3x --> T
+  V -- pass --> F[finalize]
+```
+
+Only `understand` and `compose` call the LLM. Every node on a failure path replies with fixed text
+(no LLM), so failures can't hallucinate. Memory is a LangGraph `MemorySaver` checkpointer keyed by a
+session id: within a session the bot remembers the city, activity, who's going, the time window and what
+it cited last; a new session starts empty.
+
+### Where the non-negotiables are enforced
+
+| Requirement | Enforced in |
+|---|---|
+| Every answer traceable to an SOP, or says none applies | `app/grounding.py` `validate_draft` (every matched policy cited inline, no others); `app/responses.py` `footer` (code-built "Policy basis"); `respond_no_policy` / `respond_unknown_activity` |
+| Policy changes need no code changes | `app/sop_loader.py` re-reads `sops/*.yaml` on every request; intent labels are generated from the vocabulary + SOP files (`app/intent.py` `build_intent_model`) |
+| Never answer with a forecast we don't have | `app/weather.py` (every failure → `WeatherDataError`), `app/facts.py` (`WindowUnavailable`), graph routes all of them to `respond_data_unavailable`; `app/matcher.py` skips SOPs whose data is missing |
+| Never invent advice when no policy covers it | `app/matcher.py` (closed activity vocabulary, all-clear safety belt), templated `respond_no_policy` / `respond_unknown_activity` |
+| The model composes language, never facts | `app/compose.py` (the LLM writes `{placeholders}`, not numbers) + `app/grounding.py` (rejects any number the model typed that isn't a constant from the policy text; `render_answer` substitutes the API values) |
 
 ## Useful commands (so far)
 
@@ -97,4 +147,4 @@ python -m app.matcher --fixture synthetic_rain_system_subtle --activity picnic -
 python -m app.matcher --fixture synthetic_high_uv --activity park_visit --audience child --part afternoon
 ```
 
-Run instructions for the chat backend, frontend and evals will be added as those phases land.
+Run instructions for the chat frontend and the eval suite will be added as those phases land.

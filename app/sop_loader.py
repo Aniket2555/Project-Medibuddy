@@ -46,6 +46,7 @@ class SopLibrary:
     audiences: dict[str, str]
     sources: dict[str, str] = field(default_factory=dict)  # SOP id -> file name
     warnings: list[str] = field(default_factory=list)
+    assumptions: list[dict] = field(default_factory=list)  # fixed rules for ambiguous words
 
     def by_id(self, sop_id: str) -> Sop | None:
         return next((s for s in self.sops if s.id == sop_id), None)
@@ -136,7 +137,8 @@ def load_sops(sops_dir: Path = SOPS_DIR, vocab_path: Path = VOCAB_PATH) -> SopLi
         raise SopValidationError(problems)
     for w in warnings:
         log.warning(w)
-    return SopLibrary(sops, severities, categories, activities, audiences, sources, warnings)
+    return SopLibrary(sops, severities, categories, activities, audiences, sources, warnings,
+                      vocab.get("assumptions") or [])
 
 
 def format_table(lib: SopLibrary) -> str:
