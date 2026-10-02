@@ -1,0 +1,24 @@
+id: SOP-007
+title: Heat or UV with children, elderly or pregnant people
+description: Feels-like 35 °C or more, or UV 6 or more, when someone more vulnerable to heat is going.
+category: vulnerable_groups
+severity: high
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [any]
+  audiences: [child, elderly, pregnant]
+conditions:
+  any:
+    - { fact: window_apparent_temp_max_c, op: ">=", value: 35 }
+    - { fact: window_uv_max, op: ">=", value: 6 }
+guidance: >
+  During {window_label} it will feel like up to {window_apparent_temp_max_c} °C, with a UV index of
+  up to {window_uv_max}. Children, older adults and pregnant people overheat and burn faster than
+  other adults. Keep the outing short, stay in shade, dress them in light, covering clothes and a
+  hat, use sunscreen (for children over 6 months), and give water often. Watch for signs of heat
+  exhaustion (tiredness, headache, flushed skin, unusual irritability) and head indoors if you see them.
+must_mention: [window_apparent_temp_max_c, window_uv_max]
+examples:
+  - Should I take my kid to the park this afternoon?
+  - My 70-year-old dad wants his afternoon walk.

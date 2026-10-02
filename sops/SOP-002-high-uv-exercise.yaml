@@ -1,0 +1,21 @@
+id: SOP-002
+title: Very high UV during outdoor exercise
+description: UV index of 8 or more in the window the user plans to exercise.
+category: exercise
+severity: high
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [running, cycling, walking, hiking, outdoor_sports]
+conditions:
+  all:
+    - { fact: window_uv_max, op: ">=", value: 8 }
+guidance: >
+  The UV index reaches {window_uv_max} during {window_label}, which is very high. Avoid unprotected
+  outdoor exercise in this window. If you must go, use SPF 30+ sunscreen, a hat and sunglasses, and
+  cover exposed skin. Better still, move the session to early morning (before 10:00) or evening
+  (after 17:00), when UV is much lower.
+must_mention: [window_uv_max]
+examples:
+  - Can I go for a run at 1pm in Delhi?
+  - Planning a cricket match this afternoon, any concerns?

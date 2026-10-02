@@ -1,0 +1,47 @@
+# Closed vocabularies that SOPs (and, in Phase 4, the intent extractor) use.
+# Editing this file never requires a code change.
+#
+# Why a closed list: an SOP that says `activities: [any]` must mean "any outdoor
+# activity we have thought about", NOT literally anything. A question about an
+# activity outside this list (scuba diving, skydiving, ...) maps to `other`, and
+# `other` only matches SOPs that name it explicitly, so the bot answers
+# "no guidance" instead of stretching an unrelated policy.
+#
+# An SOP may also reference an activity id that isn't listed here; the loader
+# accepts it with a warning and adds it to the vocabulary, so a new SOP file
+# alone is enough (useful for the live "add an 11th SOP" exercise).
+
+# Ordered lowest -> highest. Used for ranking when several SOPs apply.
+severities: [info, low, moderate, high, critical]
+
+categories:
+  general_hazard:    Situations that affect every outdoor plan (storms, rain systems)
+  exercise:          Running, cycling for fitness, sports, hiking
+  travel:            Getting from A to B (commute, two-wheeler, driving)
+  vulnerable_groups: Advice that depends on WHO is going (children, elderly, pets, ...)
+  leisure:           Picnics, park visits, outdoor events
+  general:           Catch-all policies such as the all-clear
+
+# id: description (the description + examples help the LLM map paraphrases; Phase 4)
+activities:
+  running:        Running or jogging outdoors (morning run, 5k, marathon training)
+  cycling:        Riding a bicycle (bike ride, cycling to work, cycle commute)
+  walking:        Walking outdoors (stroll, evening walk, walking to the shop)
+  hiking:         Hiking or trekking on trails or hills
+  outdoor_sports: Playing sports outdoors (cricket, football, tennis, badminton outside)
+  two_wheeler:    Riding a motorbike or scooter (bike in the Indian-English sense, scooty, moped)
+  driving:        Driving a car or taxi
+  commute:        Commuting or travelling by road / public transport (bus, train, auto, office trip)
+  picnic:         Picnic or sitting outdoors for leisure (lunch in the park, barbecue)
+  park_visit:     Visiting a park or playground (taking kids to the park)
+  pet_walk:       Walking a dog or taking a pet outdoors
+  outdoor_event:  Attending an outdoor event (wedding, festival, open-air concert, market)
+
+# Who is going. `general` = an ordinary adult; SOPs with no audience filter apply to everyone.
+audiences:
+  general:     An ordinary healthy adult (default when nobody else is mentioned)
+  child:       Babies, toddlers and children
+  elderly:     Older adults (roughly 65+), grandparents
+  pregnant:    Pregnant people
+  respiratory: People with asthma or other breathing conditions
+  pet:         Dogs, cats and other animals

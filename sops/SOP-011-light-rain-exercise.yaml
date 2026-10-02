@@ -1,0 +1,21 @@
+id: SOP-011
+title: Light rain during exercise
+description: Some light rain (under 2.5 mm in any hour, no thunderstorm) during walking, running or hiking.
+category: exercise
+severity: low
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [running, walking, hiking]
+conditions:
+  all:
+    - { fact: window_has_rain, op: "==", value: true }
+    - { fact: window_precip_max_mm_h, op: "<", value: 2.5 }
+    - { fact: window_has_thunderstorm, op: "==", value: false }
+guidance: >
+  Light rain is expected during {window_label} (up to {window_precip_max_mm_h} mm in an hour). That is
+  fine for exercise with the right gear: a light waterproof layer and shoes with good grip. Watch for
+  slippery surfaces such as tiles, metal covers and muddy trails, and dry off promptly afterwards.
+must_mention: [window_precip_max_mm_h]
+examples:
+  - It is drizzling a bit, still okay for my morning run?

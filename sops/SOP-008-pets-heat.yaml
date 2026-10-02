@@ -1,0 +1,21 @@
+id: SOP-008
+title: Hot pavement and heat for pets
+description: Air temperature of 32 °C or more when walking a dog or taking a pet outside.
+category: vulnerable_groups
+severity: moderate
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [any]
+  audiences: [pet]
+conditions:
+  all:
+    - { fact: window_temp_max_c, op: ">=", value: 32 }
+guidance: >
+  It reaches {window_temp_max_c} °C during {window_label}. Pavement in the sun gets far hotter than
+  the air and can burn paw pads. Use the 7-second test: if the back of your hand cannot stay on the
+  ground for 7 seconds, it is too hot for paws. Walk early morning or after sunset, stick to grass and
+  shade, keep it short, and carry water. Never leave a pet in a parked vehicle.
+must_mention: [window_temp_max_c]
+examples:
+  - Can I take my dog out for a walk at noon?

@@ -1,0 +1,32 @@
+# The all-clear makes a "yes, go ahead" answer traceable to a policy too.
+# It is a fallback: if any other SOP applies, this one is suppressed. Its own
+# conditions are a safety belt: even when no hazard SOP fires, it only says
+# "all clear" while every value is inside these ordinary bands. Otherwise the
+# bot says it has no guidance, rather than wrongly reassuring.
+id: SOP-012
+title: All clear for the planned activity
+description: No hazard policy applies and conditions are inside ordinary bands for the planned activity.
+category: general
+severity: info
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [any]
+only_if_no_other_match: true
+conditions:
+  all:
+    - { fact: heavy_rain_system, op: "==", value: false }
+    - { fact: window_has_thunderstorm, op: "==", value: false }
+    - { fact: window_gusts_max_kmh, op: "<", value: 40 }
+    - { fact: window_apparent_temp_max_c, op: "<", value: 35 }
+    - { fact: window_uv_max, op: "<", value: 8 }
+    - { fact: window_visibility_min_km, op: ">=", value: 1 }
+    - { fact: window_precip_prob_max, op: "<", value: 70 }
+guidance: >
+  None of our weather-safety policies are triggered for {window_label}: {window_description}, up to
+  {window_temp_max_c} °C (feels like {window_apparent_temp_max_c} °C), gusts up to
+  {window_gusts_max_kmh} km/h, UV index up to {window_uv_max}, and a {window_precip_prob_max}% chance
+  of rain. Conditions are within ordinary ranges, so go ahead with normal precautions.
+must_mention: [window_temp_max_c]
+examples:
+  - Is it a good time to go for a walk?

@@ -1,0 +1,20 @@
+id: SOP-005
+title: Likely rain on a journey
+description: Precipitation probability of 70% or more in the travel window.
+category: travel
+severity: moderate
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [commute, driving, two_wheeler]
+conditions:
+  all:
+    - { fact: window_precip_prob_max, op: ">=", value: 70 }
+guidance: >
+  There is up to a {window_precip_prob_max}% chance of rain during {window_label}. Expect slower
+  traffic and possible delays. Leave extra time, check traffic and weather alerts before departure,
+  and keep rain gear handy. On a two-wheeler, roads will be slippery, so brake earlier and avoid
+  painted road markings.
+must_mention: [window_precip_prob_max]
+examples:
+  - Will my drive to the airport this evening be okay?

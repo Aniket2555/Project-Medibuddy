@@ -1,0 +1,21 @@
+id: SOP-010
+title: Thunderstorm in the activity window
+description: A thunderstorm is forecast while the user plans to be outdoors.
+category: general_hazard
+severity: high
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [any]
+conditions:
+  all:
+    - { fact: window_has_thunderstorm, op: "==", value: true }
+guidance: >
+  A thunderstorm is forecast during {window_label}, with gusts up to {window_gusts_max_kmh} km/h and up
+  to {window_precip_max_mm_h} mm of rain in an hour. Lightning is a risk to anyone outdoors,
+  especially in open fields, on hills, near water or under isolated trees. Plan to be indoors (or in a
+  hard-topped vehicle) during the storm. If you hear thunder, head indoors straight away and wait
+  30 minutes after the last thunder before going back out.
+must_mention: [window_gusts_max_kmh]
+examples:
+  - Can we play football this afternoon?

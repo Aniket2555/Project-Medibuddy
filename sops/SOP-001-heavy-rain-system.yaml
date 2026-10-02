@@ -1,0 +1,28 @@
+# The case the brief cares about most: a sustained rain system (e.g. an IMD
+# low-pressure area) touches EVERY outdoor plan at once, even when no single
+# number looks extreme. The flag itself is computed from several signals in
+# config/facts_config.yaml; this SOP decides what we say when it is on.
+id: SOP-001
+title: Active heavy-rain system
+description: A multi-day heavy-rain system is over the location; every outdoor question is high risk and the answer leads with the system.
+category: general_hazard
+severity: critical
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [any]
+conditions:
+  all:
+    - { fact: heavy_rain_system, op: "==", value: true }
+override: true
+guidance: >
+  A sustained heavy-rain system is affecting {location_name}: about {precip_3day_mm} mm of rain is
+  forecast over the next 3 days, with the wettest day at {precip_max_day_mm} mm and gusts up to
+  {gusts_max_3day_kmh} km/h. Treat any outdoor plan as high risk regardless of the activity.
+  Postpone non-essential outdoor activity. Avoid waterlogged roads, underpasses and low-lying areas,
+  and do not ride or drive through flooded streets. Check official weather alerts (IMD or your
+  local authority) before setting out.
+must_mention: [precip_3day_mm, precip_max_day_mm]
+examples:
+  - Is it safe to bike to work in Bhopal today?
+  - Should I go for my evening walk? It has been raining for days.

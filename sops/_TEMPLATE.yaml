@@ -1,0 +1,28 @@
+# Template for a new SOP. Copy to SOP-0NN-short-name.yaml (files starting with
+# "_" are ignored), fill in, then run:  python -m app.sop_loader
+# No code changes and no restart are needed: SOPs are re-read on every question.
+#
+# Facts you can use in conditions and {placeholders}: python -m app.inspect_weather <city>
+# Vocabulary (activities, audiences, categories, severities): config/vocabulary.yaml
+# Operators: >  >=  <  <=  ==  !=  in  not_in  between [lo, hi]  contains_any
+id: SOP-0NN
+title: Short title
+description: One line, what situation this policy covers.
+category: exercise            # general_hazard | exercise | travel | vulnerable_groups | leisure | general
+severity: moderate            # info | low | moderate | high | critical
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [running]       # or [any] = any known activity
+  audiences: []               # optional: [child, elderly, pregnant, respiratory, pet]
+conditions:                   # all / any / not, nested as needed
+  all:
+    - { fact: window_gusts_max_kmh, op: ">=", value: 30 }
+guidance: >
+  Advice text written by the policy team. Use {fact_name} placeholders for numbers;
+  code fills them in from the live forecast.
+override: false               # true = lead the answer (like the rain-system SOP)
+only_if_no_other_match: false # true = fallback only (like the all-clear SOP)
+must_mention: [window_gusts_max_kmh]
+examples:
+  - A question this SOP is meant for

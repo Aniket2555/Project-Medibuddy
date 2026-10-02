@@ -1,0 +1,21 @@
+id: SOP-006
+title: Fog and low visibility on the road
+description: Visibility under 1 km, or fog, while driving or riding.
+category: travel
+severity: high
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [driving, two_wheeler, cycling, commute]
+conditions:
+  any:
+    - { fact: window_visibility_min_km, op: "<", value: 1 }
+    - { fact: window_has_fog, op: "==", value: true }
+guidance: >
+  Visibility is forecast to drop to {window_visibility_min_km} km during {window_label}
+  ({window_description}). Drive or ride slowly with low-beam headlights or fog lamps on (not high
+  beam), keep a long gap to the vehicle ahead, and avoid overtaking. If you can, delay the trip until
+  the fog lifts.
+must_mention: [window_visibility_min_km]
+examples:
+  - Heading out on the highway early tomorrow morning, anything to watch for?

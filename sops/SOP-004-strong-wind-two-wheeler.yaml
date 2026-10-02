@@ -1,0 +1,21 @@
+id: SOP-004
+title: Strong gusts for cyclists and two-wheelers
+description: Gusts of 40 km/h or more when the user will ride a bicycle, motorbike or scooter.
+category: travel
+severity: high
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [cycling, two_wheeler]
+conditions:
+  all:
+    - { fact: window_gusts_max_kmh, op: ">=", value: 40 }
+guidance: >
+  Gusts are forecast to reach {window_gusts_max_kmh} km/h during {window_label}. This is a safety
+  risk for two-wheelers, not just a comfort issue: gusts this strong can push a bicycle or scooter
+  sideways, especially on bridges, flyovers and open roads. Avoid riding if you can, and use covered
+  transport instead. If you must ride, slow down and keep extra distance from heavy vehicles.
+must_mention: [window_gusts_max_kmh]
+examples:
+  - Taking the scooty to office now, all good?
+  - Is it safe to cycle to work this morning?

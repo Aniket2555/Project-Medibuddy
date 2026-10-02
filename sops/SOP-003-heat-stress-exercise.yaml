@@ -1,0 +1,20 @@
+id: SOP-003
+title: Heat stress during strenuous exercise
+description: Feels-like temperature of 35 °C or more while exercising.
+category: exercise
+severity: moderate
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [running, cycling, hiking, outdoor_sports]
+conditions:
+  all:
+    - { fact: window_apparent_temp_max_c, op: ">=", value: 35 }
+guidance: >
+  It will feel like {window_apparent_temp_max_c} °C during {window_label}, which raises the risk of
+  heat exhaustion during strenuous exercise. Shorten or ease the session, drink water before and
+  during, and rest in shade. Stop immediately if you feel dizzy, nauseous or stop sweating.
+  The coolest time to exercise is early morning.
+must_mention: [window_apparent_temp_max_c]
+examples:
+  - Is it okay to go jogging this afternoon?

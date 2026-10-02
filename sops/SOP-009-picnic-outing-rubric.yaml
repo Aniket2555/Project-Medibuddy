@@ -1,0 +1,57 @@
+# Fuzzy SOP: "is today a good day for a picnic?" has no single threshold.
+# Instead of one `x > y`, the policy lists soft factors that make an outing
+# pleasant. Code checks each factor and counts how many pass, then picks the
+# grade below. The policy team writes the guidance for each grade, so the
+# model never decides what "nice" means.
+id: SOP-009
+title: Picnic and leisure-outing suitability
+description: Graded judgement of how pleasant conditions are for a picnic, park visit or outdoor event.
+category: leisure
+version: 1
+owner: safety-policy-team
+applies_to:
+  activities: [picnic, park_visit, outdoor_event]
+rubric:
+  factors:
+    - name: dry
+      label: No rain expected
+      condition: { fact: window_has_rain, op: "==", value: false }
+    - name: low_rain_chance
+      label: Rain chance below 40%
+      condition: { fact: window_precip_prob_max, op: "<", value: 40 }
+    - name: comfortable_temperature
+      label: Feels-like temperature between 18 and 32 °C
+      condition: { fact: window_apparent_temp_max_c, op: between, value: [18, 32] }
+    - name: gentle_wind
+      label: Gusts below 30 km/h
+      condition: { fact: window_gusts_max_kmh, op: "<", value: 30 }
+    - name: moderate_uv
+      label: UV index below 8
+      condition: { fact: window_uv_max, op: "<", value: 8 }
+  grades:
+    - name: good
+      min_passed: 5
+      severity: info
+      guidance: >
+        Conditions look good for an outing during {window_label}: {window_description}, feels like up to
+        {window_apparent_temp_max_c} °C, gusts up to {window_gusts_max_kmh} km/h, with a
+        {window_precip_prob_max}% chance of rain. Carry water and sunscreen as usual.
+    - name: mixed
+      min_passed: 3
+      severity: low
+      guidance: >
+        Conditions are mixed for an outing during {window_label}: {window_description}, feels like up to
+        {window_apparent_temp_max_c} °C, gusts up to {window_gusts_max_kmh} km/h, with a
+        {window_precip_prob_max}% chance of rain. It can still work with some planning. Pick a spot with
+        shade or shelter nearby, and have a backup plan for the factors that are not ideal.
+    - name: poor
+      min_passed: 0
+      severity: moderate
+      guidance: >
+        It is not a good time for an outing during {window_label}: {window_description}, feels like up to
+        {window_apparent_temp_max_c} °C, gusts up to {window_gusts_max_kmh} km/h, with a
+        {window_precip_prob_max}% chance of rain. Consider rescheduling, or choose an indoor alternative.
+must_mention: [window_precip_prob_max]
+examples:
+  - Is today a good day for a picnic?
+  - Thinking of sitting in the park with sandwiches later, good idea?
