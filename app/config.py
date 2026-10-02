@@ -25,8 +25,7 @@ def get_llm(model: str | None = None):
     from langchain_groq import ChatGroq
 
     extra = {}
-    # gpt-oss models are reasoning models. "low" measured ~3x fewer tokens per question
-    # AND fewer rejected drafts than the default (see PROGRESS / evals notes).
+    # gpt-oss models are reasoning models; "low" uses far fewer tokens per question.
     if os.getenv("GROQ_REASONING_EFFORT"):
         extra["reasoning_effort"] = os.getenv("GROQ_REASONING_EFFORT")
     return ChatGroq(

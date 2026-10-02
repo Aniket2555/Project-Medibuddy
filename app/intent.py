@@ -36,8 +36,7 @@ def build_intent_model(lib: SopLibrary) -> type[BaseModel]:
             "The activity asked about, from the allowed list. 'other' = an outdoor activity not in the "
             "list. null if this message does not mention an activity."))),
         activity_text=(Optional[str], Field(None, description="The user's own words for the activity, e.g. 'scuba diving'.")),
-        # Optional: models sometimes send null instead of [], and Groq rejects tool calls
-        # that don't match the schema exactly (seen in testing). Null = nobody mentioned.
+        # Optional: models sometimes send null instead of []. Null = nobody mentioned.
         audiences=(Optional[list[Literal[audiences]]], Field(None, description=(
             "Who is going, if mentioned (e.g. 'my kid' -> child, 'my 70-year-old dad' -> elderly, "
             "'my dog' -> pet). Empty if nobody specific is mentioned."))),
@@ -79,8 +78,6 @@ def build_intent_prompt(message: str, context: str, lib: SopLibrary) -> tuple[st
     user = f"Conversation context:\n{context or '(new conversation)'}\n\nLatest user message:\n<<<\n{message}\n>>>"
     return system, user
 
-
-# --- deterministic post-processing ---------------------------------------------------
 
 def _has_word(text: str, phrases: list[str]) -> bool:
     return any(re.search(rf"\b{re.escape(p)}\b", text, re.IGNORECASE) for p in phrases)

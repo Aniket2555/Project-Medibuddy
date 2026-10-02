@@ -1,7 +1,7 @@
 """Deterministic SOP matcher: (intent, facts) -> which policies apply, ranked.
 
-No LLM here. Given the user's activity/audiences (extracted in Phase 4) and the
-weather facts (Phase 1), every SOP is checked in plain code:
+No LLM here. Given the user's activity/audiences and the
+weather facts, every SOP is checked in plain code:
 
 1. Applicability: does the SOP cover this activity and audience?
    `[any]` means any activity in the vocabulary, never `other`.
@@ -9,7 +9,7 @@ weather facts (Phase 1), every SOP is checked in plain code:
    graded by counting passed factors.
 3. Fallbacks: `only_if_no_other_match` SOPs (the all-clear) are used only if
    nothing else applies.
-4. Conflict policy (decision #5, documented in the README):
+4. Conflict policy (documented in the README):
      sort by  override first -> severity (high to low) -> specificity -> id
      the top MAX_PRIMARY get full guidance, the rest are "also applies"
      (still cited, just not expanded).
@@ -32,7 +32,7 @@ from app.ops import compare
 from app.sop_loader import ANY, OTHER, SopLibrary, load_sops
 from app.sop_schema import PLACEHOLDER_RE, AllOf, AnyOf, Condition, Leaf, NotOf, Sop, condition_facts
 
-MAX_PRIMARY = 3  # SOPs that get full guidance in one answer (decision #5)
+MAX_PRIMARY = 3  # SOPs that get full guidance in one answer
 
 
 @dataclass(frozen=True)
@@ -101,8 +101,6 @@ class MatchResult:
     def no_match(self) -> bool:
         return not self.primary
 
-
-# --- condition evaluation ----------------------------------------------------------
 
 def evaluate(cond: Condition, facts: dict[str, Any]) -> tuple[bool, list[Check]]:
     """Returns (result, checks that explain the result)."""
@@ -197,8 +195,6 @@ def match(intent: Intent, facts: dict[str, Any], lib: SopLibrary | None = None) 
     matched.sort(key=lambda m: rank_key(m, lib))
     return MatchResult(intent, matched[:MAX_PRIMARY], matched[MAX_PRIMARY:], skipped)
 
-
-# --- rendering (deterministic, used by the templated fallback and the CLI) ----------
 
 def render(template: str, facts: dict[str, Any]) -> str:
     """Fill {fact} placeholders with the live values. Unknown/missing -> visible marker."""

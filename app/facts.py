@@ -1,8 +1,8 @@
 """Raw Open-Meteo JSON -> a flat, typed dict of "facts".
 
 This is deterministic code with no LLM involved. The facts dict is:
-  * what SOP conditions are evaluated against (Phase 3), and
-  * the ONLY source of numbers the bot may quote back (Phase 4 grounding).
+  * what SOP conditions are evaluated against, and
+  * the ONLY source of numbers the bot may quote back.
 
 Every fact is declared in FACT_CATALOG with a unit and a description. The SOP
 loader rejects conditions that reference undeclared facts, and the composer

@@ -33,8 +33,6 @@ def test_now_comes_from_payload_not_server_clock(fixture):
     assert facts["window_hours"] == 3
 
 
-# --- time windows ------------------------------------------------------------
-
 def test_uv_depends_on_window(fixture):
     """High midday UV must show up for the afternoon, not for the evening."""
     data = fixture("synthetic_high_uv")
@@ -77,8 +75,6 @@ def test_now_for_tomorrow_rejected(fixture):
     with pytest.raises(WindowUnavailable):
         derive_facts(fixture("synthetic_calm"), TimeWindow("tomorrow", "now"))
 
-
-# --- rain-system flag ----------------------------------------------------------
 
 @pytest.mark.parametrize("name", ["synthetic_rain_system_extreme", "synthetic_rain_system_subtle"])
 def test_rain_system_detected(fixture, name):

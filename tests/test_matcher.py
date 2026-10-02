@@ -28,8 +28,6 @@ def ids(result):
     return [m.id for m in result.primary]
 
 
-# --- single clear matches ------------------------------------------------------------
-
 def test_high_uv_afternoon_run(lib, facts_for):
     r = match(Intent("running"), facts_for("synthetic_high_uv", "afternoon"), lib)
     assert ids(r) == ["SOP-002"]
@@ -75,8 +73,6 @@ def test_heatwave_run_gets_heat_and_uv(lib, facts_for):
     assert ids(r) == ["SOP-002", "SOP-003"]  # high before moderate
 
 
-# --- audiences -------------------------------------------------------------------------
-
 def test_vulnerable_audience_adds_sop(lib, facts_for):
     facts = facts_for("synthetic_high_uv", "afternoon")
     adult = match(Intent("walking"), facts, lib)
@@ -84,8 +80,6 @@ def test_vulnerable_audience_adds_sop(lib, facts_for):
     assert "SOP-007" not in ids(adult)
     assert "SOP-007" in ids(elderly)
 
-
-# --- fuzzy rubric ----------------------------------------------------------------------
 
 def test_picnic_good_day(lib, facts_for):
     r = match(Intent("picnic"), facts_for("synthetic_calm", "afternoon"), lib)
@@ -107,8 +101,6 @@ def test_picnic_poor_day(lib, facts_for):
     assert ids(r)[0] == "SOP-010"  # the storm (high) ranks above the poor picnic grade
 
 
-# --- rain system: override leads, whatever the activity ------------------------------
-
 @pytest.mark.parametrize("activity", ["picnic", "walking", "commute", "outdoor_event", "pet_walk"])
 def test_rain_system_leads_every_activity(lib, facts_for, activity):
     r = match(Intent(activity), facts_for("synthetic_rain_system_subtle"), lib)
@@ -126,8 +118,6 @@ def test_subtle_rain_system_picnic_also_gets_poor_grade(lib, facts_for):
     assert r.primary[1].grade == "poor"
 
 
-# --- conflict policy: top-N + also-applies ---------------------------------------------
-
 def test_top_n_and_also_applies(lib, facts_for):
     facts = facts_for("synthetic_rain_system_extreme", "morning")
     facts.update(window_visibility_min_km=0.4, window_has_fog=True, window_has_thunderstorm=True)
@@ -143,8 +133,6 @@ def test_ranking_is_deterministic(lib, facts_for):
     facts = facts_for("synthetic_rain_system_extreme", "morning")
     assert match(Intent("two_wheeler"), facts, lib).cited_ids == match(Intent("two_wheeler"), facts, lib).cited_ids
 
-
-# --- honest "no guidance" -------------------------------------------------------------------
 
 def test_unknown_activity_matches_nothing(lib, facts_for):
     """Even on a calm day, the all-clear must not bless an activity we have no policy for."""
@@ -177,8 +165,6 @@ def test_every_sop_is_accounted_for(lib, facts_for):
     r = match(Intent("cycling"), facts_for("synthetic_calm"), lib)
     assert {m.id for m in r.matched} | {s.sop_id for s in r.skipped} == {s.id for s in lib.sops}
 
-
-# --- evaluation details ------------------------------------------------------------------------
 
 def test_any_condition_reports_only_the_true_branch(lib):
     sop007 = lib.by_id("SOP-007")
@@ -226,8 +212,6 @@ def test_render_fills_placeholders_and_marks_missing():
     assert render("Gusts {window_gusts_max_kmh} km/h", {"window_gusts_max_kmh": 58.0}) == "Gusts 58.0 km/h"
     assert render("UV {window_uv_max}", {"window_uv_max": None}) == "UV [unavailable]"
 
-
-# --- a new policy file is matched with no code change -----------------------------------------
 
 def test_new_sop_file_is_matched_without_code_change(tmp_path, facts_for):
     d = tmp_path / "sops"

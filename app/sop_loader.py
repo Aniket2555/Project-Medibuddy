@@ -108,7 +108,6 @@ def load_sops(sops_dir: Path = SOPS_DIR, vocab_path: Path = VOCAB_PATH) -> SopLi
                 problems.append(f"{path.name}: unknown severity {raw['severity']!r}; allowed: {severities}")
             continue
 
-        # vocabulary checks
         if sop.id in sources:
             problems.append(f"{path.name}: duplicate id {sop.id} (also in {sources[sop.id]})")
             continue

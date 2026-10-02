@@ -43,7 +43,7 @@ from app.sop_loader import OTHER, SOPS_DIR, SopLibrary, SopValidationError, load
 from app.weather import Location, OpenMeteoClient, WeatherClient, WeatherDataError
 
 MAX_COMPOSE_ATTEMPTS = 3  # first draft + 2 retries, then the templated answer
-INTENT_ATTEMPTS = 3       # 2 retries: off-schema tool calls (null fields, wrong tool name) seen in evals
+INTENT_ATTEMPTS = 3
 
 
 @dataclass
@@ -61,8 +61,6 @@ def groq_deps(weather: WeatherClient | None = None, sops_dir: Path = SOPS_DIR) -
 
     def structured(system: str, user: str, schema: type[BaseModel]):
         # Strict JSON-schema mode: output is constrained to the schema while it's generated.
-        # (Function calling, used before, failed in evals when the model misnamed the tool,
-        # e.g. "ParseQuery" for "ParsedQuery", or sent null for a list.)
         return llm.with_structured_output(schema, method="json_schema", strict=True).invoke(
             [SystemMessage(system), HumanMessage(user)])
 
@@ -75,7 +73,7 @@ def groq_deps(weather: WeatherClient | None = None, sops_dir: Path = SOPS_DIR) -
 class State(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
     session: dict          # persists across turns (via the checkpointer)
-    # --- per-turn scratch, reset by turn_input() ---
+    # per-turn scratch, reset by turn_input()
     route: str
     intent: dict
     notes: list[str]
@@ -134,8 +132,6 @@ def build_graph(deps: Deps, checkpointer=None):
     def reply(state: State, name: str, kind: str, text: str, **extra) -> dict:
         return step(state, name, messages=[AIMessage(text)], answer=text, kind=kind, forecast={}, **extra)
 
-    # ---- understanding ---------------------------------------------------------------
-
     def understand(state: State) -> dict:
         text = str(state["messages"][-1].content)
         session = dict(state.get("session") or {})
@@ -145,7 +141,7 @@ def build_graph(deps: Deps, checkpointer=None):
             return step(state, "understand", route="error", error=f"policy files invalid: {exc}")
         system, user = build_intent_prompt(text, _context(state), lib)
         parsed, last_exc = None, None
-        for _ in range(INTENT_ATTEMPTS):  # one retry: models occasionally emit an off-schema tool call
+        for _ in range(INTENT_ATTEMPTS):
             try:
                 parsed = deps.structured(system, user, build_intent_model(lib))
                 parsed = parsed.model_dump() if isinstance(parsed, BaseModel) else dict(parsed)
@@ -177,8 +173,6 @@ def build_graph(deps: Deps, checkpointer=None):
             session.pop("pending", None)
         return step(state, "understand", route=route, intent=merged, notes=notes, session=session)
 
-    # ---- data --------------------------------------------------------------------------
-
     def resolve_location(state: State) -> dict:
         session = dict(state["session"])
         query = state["intent"]["location"]
@@ -200,7 +194,7 @@ def build_graph(deps: Deps, checkpointer=None):
 
     def fetch_weather(state: State) -> dict:
         try:
-            forecast = deps.weather.forecast(Location(**state["location"]))  # always fresh (decision #9)
+            forecast = deps.weather.forecast(Location(**state["location"]))
         except WeatherDataError as exc:
             return step(state, "fetch_weather", route="fail", error=exc.user_message)
         return step(state, "fetch_weather", route="ok", forecast=forecast)
@@ -214,8 +208,6 @@ def build_graph(deps: Deps, checkpointer=None):
             return step(state, "derive_facts", route="fail", error=exc.user_message, forecast={})
         return step(state, "derive_facts", route="ok", facts=facts, forecast={})
 
-    # ---- policy --------------------------------------------------------------------------
-
     def match_sops(state: State) -> dict:
         lib = load_sops(deps.sops_dir)
         intent = state["intent"]
@@ -227,8 +219,6 @@ def build_graph(deps: Deps, checkpointer=None):
             also=[_serialize(m, lib) for m in result.also_applies],
             skipped=[{"id": s.sop_id, "reason": s.reason} for s in result.skipped],
         )
-
-    # ---- wording + grounding ---------------------------------------------------------------
 
     def compose(state: State) -> dict:
         question = str(next(m for m in reversed(state["messages"]) if isinstance(m, HumanMessage)).content)
@@ -272,8 +262,6 @@ def build_graph(deps: Deps, checkpointer=None):
         cited = [m["id"] for m in state["primary"] + state["also"]]
         return reply(state, "respond_templated", "templated", text, session=_remember(state, cited))
 
-    # ---- honest fallbacks (no LLM) -------------------------------------------------------------
-
     def respond_no_policy(state: State) -> dict:
         text = responses.no_policy(state["intent"]["activity"], state["facts"])
         if state.get("notes"):
@@ -298,8 +286,6 @@ def build_graph(deps: Deps, checkpointer=None):
 
     def respond_error(state: State) -> dict:
         return reply(state, "respond_error", "error", responses.intent_error())
-
-    # ---- wiring ---------------------------------------------------------------------------------
 
     g = StateGraph(State)
     for name, fn in [

@@ -30,8 +30,6 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
-# --- condition DSL -------------------------------------------------------------
-
 class Leaf(_Strict):
     fact: str
     op: str
@@ -112,8 +110,6 @@ def condition_facts(cond: Condition) -> set[str]:
     return condition_facts(cond.not_)
 
 
-# --- rubric (fuzzy SOPs) ---------------------------------------------------------
-
 class RubricFactor(_Strict):
     name: str
     label: str               # human wording, e.g. "No rain expected"
@@ -146,8 +142,6 @@ class Rubric(_Strict):
         return self
 
 
-# --- the SOP ---------------------------------------------------------------------
-
 class AppliesTo(_Strict):
     # Activity ids from config/vocabulary.yaml, or ["any"] = any known activity
     # (never `other`, i.e. never an activity we have no vocabulary entry for).
@@ -165,18 +159,16 @@ class Sop(_Strict):
     owner: str = "safety-policy-team"
     applies_to: AppliesTo
 
-    # threshold rule
     conditions: Condition | None = None
     severity: str | None = None
     guidance: str | None = None
-    # rubric rule
     rubric: Rubric | None = None
 
-    # Conflict-resolution hints (used by the matcher, Phase 3)
+    # Conflict-resolution hints
     override: bool = False                # leads the answer, shown before everything else
     only_if_no_other_match: bool = False  # e.g. the all-clear: suppressed if anything else applies
 
-    # Facts the answer must quote (checked by the grounding validator, Phase 4)
+    # Facts the answer must quote (checked by the grounding validator)
     must_mention: list[str] = Field(default_factory=list)
     # Example questions this SOP is meant for. Documentation and eval material only:
     # NOT used for matching (matching is facts + vocabulary, never string lookup).

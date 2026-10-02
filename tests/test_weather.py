@@ -38,8 +38,6 @@ def patch_get(monkeypatch, response=None, exc=None):
     monkeypatch.setattr(httpx, "get", fake_get)
 
 
-# --- geocoding -------------------------------------------------------------
-
 def test_geocode_picks_first_result(monkeypatch):
     patch_get(monkeypatch, FakeResponse(payload={"results": [
         {"name": "Bhopal", "latitude": 23.25, "longitude": 77.4, "country": "India", "admin1": "Madhya Pradesh"},
@@ -69,8 +67,6 @@ def test_geocode_network_error_is_same_fallback(monkeypatch):
     with pytest.raises(WeatherDataError):
         OpenMeteoClient().geocode("Bhopal")
 
-
-# --- forecast --------------------------------------------------------------
 
 def test_forecast_timeout_is_weather_unavailable(monkeypatch):
     patch_get(monkeypatch, exc=httpx.ReadTimeout("timed out"))
@@ -109,8 +105,6 @@ def test_forecast_valid_payload_passes(monkeypatch, fixture):
     patch_get(monkeypatch, FakeResponse(payload=data))
     assert OpenMeteoClient().forecast(BHOPAL)["current"]["time"] == data["current"]["time"]
 
-
-# --- test doubles ------------------------------------------------------------
 
 def test_failing_client_simulates_outage():
     with pytest.raises(WeatherUnavailable):

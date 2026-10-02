@@ -163,9 +163,6 @@ def validate_forecast(data: dict[str, Any]) -> None:
             raise WeatherUnavailable(f"'{block}' block has no time steps")
 
 
-# --- Test / eval doubles ---------------------------------------------------
-
-
 class StaticWeatherClient:
     """Serves a fixed forecast payload (recorded or synthetic) for any location."""
 

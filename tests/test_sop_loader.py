@@ -43,8 +43,6 @@ def problems_for(d: Path) -> str:
     return "\n".join(exc.value.problems)
 
 
-# --- the real rule set meets the brief's requirements ----------------------------
-
 def test_real_sops_load():
     lib = load_sops()
     assert len(lib.sops) >= 10
@@ -96,8 +94,6 @@ def test_every_guidance_quotes_live_facts():
             assert PLACEHOLDER_RE.search(text), f"{s.id} guidance quotes no live facts"
 
 
-# --- adding a policy needs only a new file ----------------------------------------
-
 def test_new_sop_file_is_picked_up(sop_dir):
     before = len(load_sops(sop_dir).sops)
     write(sop_dir, "SOP-099-test.yaml", VALID_SOP)
@@ -113,8 +109,6 @@ def test_new_activity_in_sop_extends_vocabulary(sop_dir):
     assert "kite_flying" in lib.activities
     assert any("kite_flying" in w for w in lib.warnings)
 
-
-# --- bad policies fail loudly, with the file name ------------------------------------
 
 @pytest.mark.parametrize(
     "mutation, expected",

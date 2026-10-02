@@ -63,7 +63,6 @@ def test_render_formats_values():
 
 
 def test_doubled_braces_rejected():
-    """Found in evals: '{{window_label}}' rendered as '{this morning}'."""
     errs = validate_draft("UV {window_uv_max} during {{window_label}} [SOP-002].", [UV], ["SOP-002"], FACTS)
     assert any("braces" in e for e in errs)
 
@@ -74,8 +73,7 @@ def test_stray_brace_rejected():
 
 
 def test_composer_gets_text_filled_in_and_only_number_placeholders():
-    """Found in evals: given '{window_label}' the model sometimes wrote '{this afternoon}'.
-    Text facts are now filled in by code; only numeric facts stay as placeholders."""
+    """Text facts are filled in by code; only numeric facts stay as placeholders."""
     from app.compose import build_compose_prompt
     m = {"id": "SOP-002", "title": "UV", "severity": "high", "override": False, "grade": None,
          "guidance": "UV reaches {window_uv_max} during {window_label}.", "must_mention": ["window_uv_max"],

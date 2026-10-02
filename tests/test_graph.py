@@ -1,7 +1,7 @@
 """End-to-end graph tests with injected fakes: fixture weather + a scripted LLM.
 
 These check routing, grounding, fallbacks and memory deterministically, with no
-API key. The eval suite (Phase 6) runs the same paths against the real LLM.
+API key. The eval suite runs the same paths against the real LLM.
 """
 
 import re
@@ -85,8 +85,6 @@ def ask(graph, text, sid="s1"):
     return run_turn(graph, sid, text)
 
 
-# --- happy path + grounding ------------------------------------------------------------------
-
 def test_answer_is_grounded_and_cited(fixture):
     q = "Going for a run at 1pm in Delhi, ok?"
     graph, llm, _ = make(fixture("synthetic_high_uv"), {q: {"activity": "running", "location": "Delhi", "part": "afternoon"}})
@@ -146,8 +144,6 @@ def test_rain_system_must_lead(fixture):
     assert out["answer"].index("[SOP-001]") < out["answer"].index("[SOP-009]")
 
 
-# --- honest failure paths --------------------------------------------------------------------------
-
 def test_weather_api_down(fixture):
     q = "Run now in Pune?"
     graph, llm, _ = make(FailingWeatherClient("forecast"), {q: {"activity": "running", "location": "Pune"}})
@@ -206,8 +202,6 @@ def test_broken_policy_file_fails_loudly(tmp_path, fixture):
     assert out["kind"] == "error" and "policy files invalid" in out["error"]
 
 
-# --- assumptions ------------------------------------------------------------------------------------
-
 def test_bike_means_two_wheeler_and_says_so(fixture):
     q = "Is it safe to bike to work now in Pune?"
     graph, _, _ = make(fixture("synthetic_strong_wind"), {q: {"activity": "cycling", "location": "Pune"}})
@@ -221,8 +215,6 @@ def test_bicycle_is_not_overridden(fixture):
     graph, _, _ = make(fixture("synthetic_strong_wind"), {q: {"activity": "cycling", "location": "Pune"}})
     assert ask(graph, q)["intent"]["activity"] == "cycling"
 
-
-# --- session memory -----------------------------------------------------------------------------------
 
 def test_follow_up_reuses_context_and_refetches(fixture):
     q1, q2 = "Safe to ride my scooter in Bhopal this morning?", "What about this evening instead?"
@@ -261,8 +253,6 @@ def test_sessions_are_isolated(fixture):
     assert out["kind"] == "clarify"
 
 
-# --- the live "11th SOP" moment ------------------------------------------------------------------------
-
 def test_new_sop_file_answers_without_code_change(tmp_path, fixture):
     d = tmp_path / "sops"
     shutil.copytree(SOPS_DIR, d)
@@ -285,8 +275,6 @@ def test_new_sop_file_answers_without_code_change(tmp_path, fixture):
     out = ask(graph, q)
     assert out["kind"] == "answered" and "[SOP-013]" in out["answer"] and "58.0" in out["answer"]
 
-
-# --- robustness fixes found against the real LLM ---------------------------------------------------------
 
 def test_off_schema_intent_is_retried_once(fixture):
     q = "Cycling now in Pune?"

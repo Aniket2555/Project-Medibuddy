@@ -50,8 +50,6 @@ SCAN_CITIES = [
 ]
 
 
-# --- weather setup ---------------------------------------------------------------------
-
 def fixture_client(name: str) -> StaticWeatherClient:
     payload = json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
     loc = payload.get("_location")
@@ -78,8 +76,6 @@ def scan_most_severe() -> dict | None:
         time.sleep(0.2)
     return best
 
-
-# --- checks ---------------------------------------------------------------------------------
 
 def body_of(answer: str) -> str:
     return answer.split("\n---\n")[0]
@@ -164,8 +160,6 @@ def check(expect: dict, state: dict) -> list[str]:
     return f
 
 
-# --- judge ----------------------------------------------------------------------------------
-
 class Verdict(BaseModel):
     faithful: bool = Field(description="true if the answer contains no advice beyond the policy text")
     unsupported_claims: list[str] = Field(default_factory=list,
@@ -212,8 +206,6 @@ def is_infra_error(text: str) -> bool:
     return any(k in t for k in ("RateLimitError", "rate_limit_exceeded", "Error code: 429", "Error code: 503",
                                 "APIConnectionError", "InternalServerError"))
 
-
-# --- running -----------------------------------------------------------------------------------
 
 def run_case(case: dict, base: Deps, judge_llm, scan: dict | None) -> dict:
     w = case["weather"]
@@ -335,8 +327,6 @@ def base_model() -> str:
     import os
     return os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
-
-# --- report -------------------------------------------------------------------------------------
 
 def judge_control_line(meta: dict) -> str:
     ctrl = meta.get("judge_control") or []

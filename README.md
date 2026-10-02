@@ -5,6 +5,8 @@ A LangGraph chat bot that answers outdoor-activity safety questions ("is it safe
 written policies (SOPs)**. The model never decides what good advice is, never picks a policy and never
 types a number. It labels the question and words the answer. Everything else is deterministic code.
 
+**Live demo:** https://project-medibuddy-e3sltekvziticaoevc4dcj.streamlit.app/
+
 ## Quick start
 
 ```bash

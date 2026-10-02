@@ -52,7 +52,6 @@ def validate_draft(draft: str, primary: list[dict], cited_ids: list[str], facts:
                       "{window_gusts_max_kmh}, and no other numbers may be added")
 
     # 2. placeholders must be real, present facts, written with single braces
-    #    (found in evals: the model sometimes writes {{window_label}}, which rendered as "{this morning}")
     leftover = PLACEHOLDER_RE.sub("", draft)
     bad = re.search(r"\{[^{}]*\}|[{}]", leftover)
     if bad:
