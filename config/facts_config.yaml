@@ -1,0 +1,37 @@
+# Configuration for turning raw Open-Meteo data into "facts".
+# Editing this file changes behaviour without touching code.
+
+# Named parts of the day, in the location's local time (inclusive hours, 0-23).
+# The user's question is mapped to one of these (plus today / tomorrow / day_after).
+time_windows:
+  now:        { hours_ahead: 2 }   # current hour + the next 2 hours
+  morning:    { start: 6,  end: 11 }
+  afternoon:  { start: 12, end: 16 }
+  evening:    { start: 17, end: 20 }
+  night:      { start: 21, end: 23 }
+  whole_day:  { start: 0,  end: 23 }
+
+# --- Heavy-rain system detection (the IMD "low-pressure area" case) ---------
+# Open-Meteo has no official alerts, so we infer a sustained rain system when
+# several independent signals agree over the 3-day forecast. One spike (say, a
+# single wet hour) shouldn't trip it; a multi-day soaking with gusts should.
+# Calibration note: one isolated thunderstorm fires a storm code, gusts AND a high
+# rain chance at once. That's why the chance signal counts *days*, so one storm
+# afternoon alone can't reach min_signals (tested in tests/test_facts.py).
+#
+# Each signal is a condition on a fact (see FACT_CATALOG in app/facts.py).
+heavy_rain_system:
+  # A forecast day counts as "high chance" when its max precipitation probability
+  # reaches this value (used by the high_precip_prob_days_3day fact).
+  high_prob_day_pct: 80
+  min_signals: 3            # how many signals must fire together
+  # Any single day at or above this total fires the flag on its own.
+  # 64.5 mm/day is the lower bound of IMD's "heavy rainfall" category.
+  hard_trigger_daily_mm: 64.5
+  signals:
+    multi_day_total:   { fact: precip_3day_mm,        op: ">=", value: 50 }
+    wet_day:           { fact: precip_max_day_mm,     op: ">=", value: 25 }
+    # Persistence, not one stormy afternoon: at least 2 of the 3 days are high-chance.
+    persistent_chance: { fact: high_precip_prob_days_3day, op: ">=", value: 2 }
+    heavy_rain_code:   { fact: heavy_rain_code_3day,  op: "==", value: true }
+    squally_wind:      { fact: gusts_max_3day_kmh,    op: ">=", value: 40 }
