@@ -18,6 +18,18 @@ pip install -r requirements.txt
 cp .env.example .env      # then put your GROQ_API_KEY in .env (model: openai/gpt-oss-120b on Groq)
 ```
 
+## Run the chat frontend
+
+```bash
+streamlit run frontend/streamlit_app.py      # then open http://localhost:8501
+```
+
+Type a question in the chat box. Under every answer, **"Why did it say that?"** shows the policies applied,
+the exact weather comparisons that triggered them, how the question was understood, the path through
+the graph and the raw weather facts. The sidebar lists the SOPs currently loaded from `sops/` (re-read
+on every message, so a new policy file appears without a restart) and has a **New session** button
+(memory is per browser session).
+
 ## Run the bot (terminal)
 
 ```bash
@@ -147,4 +159,4 @@ python -m app.matcher --fixture synthetic_rain_system_subtle --activity picnic -
 python -m app.matcher --fixture synthetic_high_uv --activity park_visit --audience child --part afternoon
 ```
 
-Run instructions for the chat frontend and the eval suite will be added as those phases land.
+Run instructions for the eval suite will be added when that phase lands.
