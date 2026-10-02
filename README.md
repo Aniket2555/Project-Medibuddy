@@ -201,7 +201,7 @@ day and time window, any pending question, and which SOPs it cited last.
 ## Evals
 
 **Results: [`evals/RESULTS.md`](evals/RESULTS.md)**, including hand-written notes on failures and caveats
-(at the end of the same file).
+(at the end of the same file; source: [`evals/NOTES.md`](evals/NOTES.md)).
 
 - **31 cases** in [`evals/cases.yaml`](evals/cases.yaml), each stating what it checks, what a pass looks like and which
   brief requirement it covers: clear matches, paraphrases (including Hinglish), severe live weather, multiple SOPs,
@@ -257,7 +257,7 @@ config/
   vocabulary.yaml    severities, categories, activities, audiences, ambiguous-word rules
 sops/                one YAML per policy + _TEMPLATE.yaml
 frontend/            Streamlit chat app
-evals/               cases.yaml, run_evals.py, RESULTS.md, results/, fixtures/ (recorded + synthetic weather)
+evals/               cases.yaml, run_evals.py, RESULTS.md, NOTES.md, results/, fixtures/ (recorded + synthetic weather)
 tests/               unit + graph tests (no API key needed)
 ```
 
