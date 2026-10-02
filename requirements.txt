@@ -1,0 +1,18 @@
+# Versions tested on Python 3.11 (Windows). Ranges allow patch/minor updates.
+
+# Agent / LLM
+langgraph>=1.2,<2
+langchain-core>=1.6,<2
+langchain-groq>=1.1,<2
+
+# Data, validation, config
+httpx>=0.28,<1
+pydantic>=2.13,<3
+pyyaml>=6.0,<7
+python-dotenv>=1.2,<2
+
+# Frontend
+streamlit>=1.64,<2
+
+# Tests / evals
+pytest>=9.1,<10
